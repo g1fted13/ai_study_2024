@@ -15,11 +15,11 @@
 
 | Layer | Output Shape  | Description |
 |-------|---------------|-------------|
-| Conv1  | 32 * 32 * 16  | Filters: (2 * 2 * 3) * 16 |
+| Conv1  | 32 * 32 * 16  | Filters: (2 * 2 * 3) * 16 / Activation: ReLU|
 | MaxPool | 16 * 16 * 16 |             |
-| Conv2 | 16 * 16 * 32 | Filters: (2 * 2 * 16) * 32 |
+| Conv2 | 16 * 16 * 32 | Filters: (2 * 2 * 16) * 32 / Activation: ReLU|
 | MaxPool | 8 * 8 * 32 |            |
-| Conv3 | 8 * 8 * 64 | Filters: (2 * 2 * 32) * 64 |
+| Conv3 | 8 * 8 * 64 | Filters: (2 * 2 * 32) * 64 / Activation: ReLU|
 | MaxPool | 4 * 4 * 64 |            |
 | Dropout | 4 * 4 * 64   | 훈련 시 Layer의 30%의 뉴런을 무작위로 비활성화 | 
 | Flatten | 1024  |           |
