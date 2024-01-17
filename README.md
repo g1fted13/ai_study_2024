@@ -46,6 +46,7 @@ Test Accuracy: 0.6965000033378601 (2024-01-07 21:58)
 | MaxPool | 8 * 8 * 64 |            |
 | Conv4 | 8 * 8 * 128 | Filters: (3 * 3 * 64) * 128 / Activation: ReLU|
 | Conv5 | 8 * 8 * 64 | Filters: (3 * 3 * 128) * 64 / Activation: ReLU|
+| MaxPool | 4 * 4 * 64 |            |
 | Dropout | 4 * 4 * 64   | 훈련 시 Layer의 30%의 뉴런을 무작위로 비활성화 | 
 | Flatten | 1024  |           |
 | FC  |  10    | Activation: SoftMax   |
