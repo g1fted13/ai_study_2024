@@ -119,7 +119,60 @@ hist=  model.fit(x_train, y_train, batch_size=32, epochs=10, validation_data=(x_
 #val_acc가 가장 좋았던 가중치 사용하기
 model.load_weights('model.weights.best.hdf5')
 
-
+'''
 #모델 평가하기
 score = model.evaluate(x_test, y_test, verbose=0)
 print('\n', 'Test Accuracy: ', score[1])
+'''
+
+# 모델 예측
+y_pred = model.predict(x_test)
+
+# 예측 레이블을 원-핫 인코딩에서 정수 레이블로 변환
+y_pred_classes = np.argmax(y_pred, axis=1)
+y_true = np.argmax(y_test, axis=1)
+
+# 레이블에 해당하는 이름
+class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+
+# 혼동 행렬
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+cm = confusion_matrix(y_true, y_pred_classes)
+
+# 혼동 행렬 시각화
+plt.figure(figsize=(10, 8))
+sns.heatmap(cm, annot=True, fmt='d', xticklabels=class_names, yticklabels=class_names)
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.show()
+
+# 잘못 분류된 이미지 식별
+misclassified_idx = np.where(y_pred_classes != y_true)[0]
+
+
+
+
+# 잘못 분류된 이미지 중 일부 시각화
+plt.figure(figsize=(15, 4))
+for i, idx in enumerate(misclassified_idx[:10]): # 처음 10개만 표시
+    plt.subplot(2, 5, i + 1)
+    plt.imshow((x_test[idx] * 255).astype('uint8'))
+    true_label = class_names[y_true[idx]]
+    pred_label = class_names[y_pred_classes[idx]]
+    plt.title(f"True: {true_label}, Pred: {pred_label}")
+    plt.axis('off')
+plt.show()
+
+
+
+
+
+
+
+'''
+2024-01-07 21:58
+Test Accuracy:  0.6965000033378601
+'''
