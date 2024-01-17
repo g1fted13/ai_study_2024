@@ -14,6 +14,7 @@
 #### 첫 번째 모델
 
 | Layer | Output Shape  | Description |
+|-------|---------------|-------------|
 | Conv1  | 32 * 32 * 16  | Filters: (2 * 2 * 3) * 16 |
 | MaxPool | 16 * 16 * 16 |             |
 | Conv2 | 16 * 16 * 32 | Filters: (2 * 2 * 16) * 32 |
