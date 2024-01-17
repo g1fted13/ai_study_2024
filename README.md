@@ -26,3 +26,6 @@
 | FC1   |  500    | Activation: ReLu    |
 | Dropout |  500  | 훈련 시 Layer의 40%의 뉴런을 무작위로 비활성화 |
 | FC2   | 10     | Activation: SoftMax   | 
+
+Test Accuracy: 0.6965000033378601 (2024-01-07 21:58)
+특이사항 - 개와 고양이를 잘 구분 못 함
