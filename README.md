@@ -13,6 +13,8 @@
 
 #### 첫 번째 모델
 
+전처리 - 픽셀값 정규화
+
 | Layer | Output Shape  | Description |
 |-------|---------------|-------------|
 | Conv1  | 32 * 32 * 16  | Filters: (2 * 2 * 3) * 16 / Activation: ReLU|
@@ -30,3 +32,28 @@
 Test Accuracy: 0.6965000033378601 (2024-01-07 21:58)
 
 특이사항 - 개와 고양이를 잘 구분 못 함
+
+#### 두 번째 모델
+
+전처리 - 픽셀값 정규화
+
+| Layer | Output Shape  | Description |
+|-------|---------------|-------------|
+| Conv1  | 32 * 32 * 16  | Filters: (3 * 3 * 3) * 16 / Activation: ReLU|
+| Conv2 | 32 * 32 * 32 | Filters: (3 * 3 * 16) * 32 / Activation: ReLU|
+| MaxPool | 16 * 16 * 32 |            |
+| Conv3 | 16 * 16 * 64 | Filters: (3 * 3 * 32) * 64 / Activation: ReLU|
+| MaxPool | 8 * 8 * 64 |            |
+| Conv4 | 8 * 8 * 128 | Filters: (3 * 3 * 64) * 128 / Activation: ReLU|
+| Conv5 | 8 * 8 * 64 | Filters: (3 * 3 * 128) * 64 / Activation: ReLU|
+| Dropout | 4 * 4 * 64   | 훈련 시 Layer의 30%의 뉴런을 무작위로 비활성화 | 
+| Flatten | 1024  |           |
+| FC  |  10    | Activation: SoftMax   |
+
+Test Accuracy: 0.7813000082969666 (2024-01-17 19:05)
+
+특이사항
+
+1. Parameter 개수 약 18만 개, 층을 더 많이 쌓아도 될 듯
+2. 개와 고양이 여전히 잘 구분 못 함
+3. 틀린 이미지를 보면 이미지 내에 불필요한 부분들이 존재. 전처리에도 신경을 써야할 듯함.
