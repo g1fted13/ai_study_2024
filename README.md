@@ -23,7 +23,7 @@
 | MaxPool | 4 * 4 * 64 |            |
 | Dropout | 4 * 4 * 64   | 훈련 시 Layer의 30%의 뉴런을 무작위로 비활성화 | 
 | Flatten | 1024  |           |
-| FC1   |  500    | Activation: ReLu    |
+| FC1   |  500    | Activation: ReLU    |
 | Dropout |  500  | 훈련 시 Layer의 40%의 뉴런을 무작위로 비활성화 |
 | FC2   | 10     | Activation: SoftMax   | 
 
