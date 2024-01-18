@@ -22,6 +22,38 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
 
+#데이터 보강
+from keras.preprocessing.image import ImageDataGenerator
+
+gen = ImageDataGenerator(zoom_range= (0.7, 1.3), 
+width_shift_range = 0.2, 
+height_shift_range=0.2, 
+horizontal_flip=True)
+
+augment_ratio = 1.5 #전체 데이터의 150%
+augment_size = int(augment_ratio * x_train.shape[0])
+
+randidx = np.random.randint(x_train.shape[0], size=augment_size)
+
+x_augmented = x_train[randidx].copy()
+y_augmented = y_train[randidx].copy()
+
+x_augmented, y_augmented = gen.flow(x_augmented, y_augmented,
+                                    batch_size=augment_size,
+                                    shuffle=False).next()
+
+x_train = np.concatenate((x_train, x_augmented))
+y_train = np.concatenate((y_train, y_augmented))
+
+
+#보강된 학습데이터/정답데이터를 랜덤하게 섞음
+s = np.arange(x_train.shape[0])
+np.random.shuffle(s)
+
+x_train = x_train[s]
+y_train = y_train[s]
+
+
 #훈련 데이터, 검증 데이터 분류
 (x_train, x_valid) = x_train[5000:], x_train[:5000]
 (y_train, y_valid) = y_train[5000:], y_train[:5000]
@@ -36,6 +68,8 @@ print("y_test shape:", y_test.shape)
 
 print("x_valid shape:", x_valid.shape)
 print("y_valid shape:", y_valid.shape)
+
+
 
 #CNN 모델링
 
@@ -104,8 +138,8 @@ model.add(Conv2D(filters=128, kernel_size=3, padding='same', activation='relu'))
 model.add(MaxPool2D(pool_size=2))
 
 #Dropout 층 쌓기
-#훈련 시 Layer의 20%의 뉴런을 무작위로 비활성화
-model.add(Dropout(0.2))
+#훈련 시 Layer의 30%의 뉴런을 무작위로 비활성화
+model.add(Dropout(0.3))
 
 
 #Flatten
@@ -118,10 +152,10 @@ model.add(Flatten())
 #Input: 2028
 #Intermediate Output: 500
 #Dropout
-#40%의 뉴런을 무작위로 비활성화
+#30%의 뉴런을 무작위로 비활성화
 #Final Output: 10
 model.add(Dense(500, activation='relu'))
-model.add(Dropout(0.4))
+model.add(Dropout(0.3))
 model.add(Dense(10, activation='softmax'))
 
 #모델 요약
@@ -131,11 +165,6 @@ model.summary()
 #모델 컴파일하기
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
 
-
-# Data Augmentation 설정 (좌우반전)
-from keras.preprocessing.image import ImageDataGenerator
-datagen = ImageDataGenerator(horizontal_flip=True)
-
 #모델 학습하기
 #callback의 진행상황에 대한 상세 출력 활성화; 각 에포크마다 결과가 출력됨
 #전체 훈련 데이터에 대해서 10번 에포크 반복
@@ -143,7 +172,7 @@ datagen = ImageDataGenerator(horizontal_flip=True)
 from keras.callbacks import ModelCheckpoint
 checkpointer = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=1, save_best_only=True)
 
-hist=  model.fit(datagen.flow(x_train, y_train, batch_size=32), epochs=10, validation_data=(x_valid, y_valid), callbacks=[checkpointer], verbose=2, shuffle=True)
+hist=  model.fit(x_train, y_train, batch_size=32, epochs=10, validation_data=(x_valid, y_valid), callbacks=[checkpointer], verbose=2, shuffle=True)
 
 
 #val_acc가 가장 좋았던 가중치 사용하기
@@ -210,4 +239,7 @@ Test Accuracy:  0.7813000082969666
 
 2024-01-18 05:13
 Test Accuracy:  0.739799976348877
+
+2024-01-18 20:10
+Test Accuracy: 0.6894999742507935
 '''
