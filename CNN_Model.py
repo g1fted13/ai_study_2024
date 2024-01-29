@@ -76,6 +76,15 @@ print("y_valid shape:", y_valid.shape)
 #케라스에서 모델과 층 import + 모델 생성
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPool2D, Flatten, Dense, Dropout
+from keras.optimizers import SGD
+from keras.callbacks import LearningRateScheduler, ModelCheckpoint
+
+# 학습률 조정 함수 정의
+def scheduler(epoch, lr):
+    if epoch < 10:
+        return 0.01
+    else:
+        return 0.001
 
 model = Sequential()
 
@@ -161,18 +170,19 @@ model.add(Dense(10, activation='softmax'))
 #모델 요약
 model.summary()
 
+optimizer = SGD(learning_rate=0.01)
 
 #모델 컴파일하기
-model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+model.compile(optimizer=optimizer, loss='categorical_crossentropy',  metrics=['accuracy'])
+
 
 #모델 학습하기
 #callback의 진행상황에 대한 상세 출력 활성화; 각 에포크마다 결과가 출력됨
 #전체 훈련 데이터에 대해서 10번 에포크 반복
 
-from keras.callbacks import ModelCheckpoint
+lr_scheduler = LearningRateScheduler(scheduler, verbose=1)
 checkpointer = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=1, save_best_only=True)
-
-hist=  model.fit(x_train, y_train, batch_size=32, epochs=10, validation_data=(x_valid, y_valid), callbacks=[checkpointer], verbose=2, shuffle=True)
+hist=  model.fit(x_train, y_train, batch_size=32, epochs=80, validation_data=(x_valid, y_valid), callbacks=[lr_scheduler, checkpointer], verbose=2, shuffle=True)
 
 
 #val_acc가 가장 좋았던 가중치 사용하기
@@ -242,4 +252,19 @@ Test Accuracy:  0.739799976348877
 
 2024-01-18 20:10
 Test Accuracy: 0.6894999742507935
+
+2024-01-29 16:26 (데이터 증강 + 2번째 모델)
+Test Accuracy: 0.785099983215332
+
+2024-01-29 16:56 (데이터 증강 + 2번째 모델 + 에포크 30)
+Test Accuracy:  0.784500002861023
+
+2024-01-29 17:21 (데이터 증강 + 3번째 모델 + 에포크 30)
+Test Accuracy: 0.6814000010490417
+
+2024-01-29 18:18 (데이터 증강 + 3번째 모델 + 에포크 80 + optimizer SGD learning_rate 0.001)
+Test Accuracy: 0.8033000230789185
+
+2024-01-29 18:53 (데이터 증강 + 3번째 모델 + 에포크 80 + optimizer SGD learning_rate 0.01 -> 0.001)
+Test Accuracy: 0.8113999962806702
 '''
