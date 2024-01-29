@@ -7,7 +7,7 @@
 | 1    | 2024. 01. 07 | VS Code 개발 환경 / CIFAR-10 데이터셋 분류 CNN Model 설계 |
 | 1.5    | 2024. 01. 07 | 깃헙 익히기 [@eastshine2741] (https://www.github.com/eastshine2741) 다녀감 |
 | 2    | 2024. 01. 17 | CIFAR-10 데이터셋 분류 모델 개선 / 모델 시각화 |
-
+| 3    | 2024. 01. 29 | CIFAR-10 데이터셋 분류 모델 개선(optimizer/learning rate 조정) |
 
 ### CIFAR-10 데이터셋
 
