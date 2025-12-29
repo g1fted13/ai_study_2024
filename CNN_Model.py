@@ -1,83 +1,45 @@
-'''
 import os
-os.system('pip install tensorflow')
-'''
+import keras
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from keras.datasets import cifar10
+from keras.preprocessing.image import ImageDataGenerator
+from keras.models import Sequential
+from keras.layers import Activation, BatchNormalization, Conv2D, GlobalAveragePooling2D, MaxPool2D, Flatten, Dense, Dropout
+from keras.optimizers import SGD
+from keras.callbacks import LearningRateScheduler, ModelCheckpoint
+from sklearn.metrics import confusion_matrix
 
-#케라스에서 데이터 가져오기
-from keras.datasets import cifar10  
+# os.system('pip install tensorflow') # 필요한 경우 주석 해제
+
+# 1. 케라스에서 데이터 가져오기
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
-
-#데이터 전처리(픽셀값 정규화)
+# 2. 데이터 전처리(픽셀값 정규화)
 x_train = x_train.astype('float32') / 255
 x_test = x_test.astype('float32') / 255
 
-
-#레이블 원-핫 인코딩
-import keras
-import numpy as np
-
+# 3. 레이블 원-핫 인코딩
 num_classes = len(np.unique(y_train))
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
+# 4. 훈련/검증 데이터 분리 (모델 학습 전에 미리 나누어야 함)
+# 데이터 증강을 위해 원본 x_train을 x_train_main과 x_valid로 나눕니다.
+(x_train_main, x_valid) = x_train[5000:], x_train[:5000]
+(y_train_main, y_valid) = y_train[5000:], y_train[:5000]
 
-#데이터 보강
-from keras.preprocessing.image import ImageDataGenerator
+# 5. ImageDataGenerator 정의 (실시간 증강 설정)
+datagen = ImageDataGenerator(
+    rotation_range=15,      # 이미지를 15도 내외로 회전
+    width_shift_range=0.1,  # 좌우로 10% 이동
+    height_shift_range=0.1, # 상하로 10% 이동
+    horizontal_flip=True,   # 좌우 반전
+    zoom_range=0.1          # 10% 확대/축소
+)
 
-gen = ImageDataGenerator(zoom_range= (0.7, 1.3), 
-width_shift_range = 0.2, 
-height_shift_range=0.2, 
-horizontal_flip=True)
-
-augment_ratio = 1.5 #전체 데이터의 150%
-augment_size = int(augment_ratio * x_train.shape[0])
-
-randidx = np.random.randint(x_train.shape[0], size=augment_size)
-
-x_augmented = x_train[randidx].copy()
-y_augmented = y_train[randidx].copy()
-
-x_augmented, y_augmented = gen.flow(x_augmented, y_augmented,
-                                    batch_size=augment_size,
-                                    shuffle=False).next()
-
-x_train = np.concatenate((x_train, x_augmented))
-y_train = np.concatenate((y_train, y_augmented))
-
-
-#보강된 학습데이터/정답데이터를 랜덤하게 섞음
-s = np.arange(x_train.shape[0])
-np.random.shuffle(s)
-
-x_train = x_train[s]
-y_train = y_train[s]
-
-
-#훈련 데이터, 검증 데이터 분류
-(x_train, x_valid) = x_train[5000:], x_train[:5000]
-(y_train, y_valid) = y_train[5000:], y_train[:5000]
-
-
-#데이터 모양 확인
-print("x_train shape:", x_train.shape)
-print("y_train shape:", y_train.shape)
-
-print("x_test shape:", x_test.shape)
-print("y_test shape:", y_test.shape)
-
-print("x_valid shape:", x_valid.shape)
-print("y_valid shape:", y_valid.shape)
-
-
-
-#CNN 모델링
-
-#케라스에서 모델과 층 import + 모델 생성
-from keras.models import Sequential
-from keras.layers import Conv2D, MaxPool2D, Flatten, Dense, Dropout
-from keras.optimizers import SGD
-from keras.callbacks import LearningRateScheduler, ModelCheckpoint
+# 6. CNN 모델링 (모델을 먼저 정의해야 학습을 시킬 수 있습니다)
 
 # 학습률 조정 함수 정의
 def scheduler(epoch, lr):
@@ -88,144 +50,92 @@ def scheduler(epoch, lr):
 
 model = Sequential()
 
-#첫 번째 Conv층 쌓기
-#Input : 32 * 32 * 3 image
-#Filters: (3 * 3 * 3) * 16 -> 32 filters
-#Output: 32 * 32 * 32
+# 첫 번째 Conv층
+model.add(Conv2D(32, (3, 3), padding='same', input_shape=(32, 32, 3))) # 첫 층에는 input_shape 명시 필요
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
-model = Sequential()
-model.add(Conv2D(filters=32, kernel_size=3, padding='same', activation='relu', input_shape=(32, 32, 3)))
-
-
-#두 번째 Conv층 쌓기
-#Input: 32 * 32 * 32
-#Filters: (3 * 3 * 32) * 32 -> 32 filters
-#Output: 32 * 32 * 32
-#MaxPool: 16 * 16 * 32
-
-model.add(Conv2D(filters=32, kernel_size=3, padding='same', activation='relu'))
+# 두 번째 Conv층
+model.add(Conv2D(32, (3, 3), padding='same'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 model.add(MaxPool2D(pool_size=2))
 
+# 세 번째 Conv층
+model.add(Conv2D(64, (3, 3), padding='same'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
-#세 번째 Conv층 쌓기
-#Input: 16 * 16 * 32
-#Filters: (3 * 3 * 32) * 64 -> 64 filters
-#Output: 16 * 16 * 64
-
-model.add(Conv2D(filters=64, kernel_size=3, padding='same', activation='relu'))
-
-#네 번째 Conv층 쌓기
-#Input: 16 * 16 * 64
-#Filters: (3 * 3 * 64) * 64 -> 64 filters
-#Output: 16 * 16 * 64
-#MaxPool: 8 * 8 * 64
-
-model.add(Conv2D(filters=64, kernel_size=3, padding='same', activation='relu'))
+# 네 번째 Conv층
+model.add(Conv2D(64, (3, 3), padding='same'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 model.add(MaxPool2D(pool_size=2))
 
-#다섯 번째 Conv층 쌓기
-#Input: 8 * 8 * 64
-#Filters: (3 * 3 * 64) * 128 -> 128 filters
-#Output: 8 * 8 * 128
+# 다섯 번째 Conv층
+model.add(Conv2D(128, (3, 3), padding='same'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
-model.add(Conv2D(filters=128, kernel_size=3, padding='same', activation='relu'))
+# 여섯 번째 Conv층
+model.add(Conv2D(128, (3, 3), padding='same'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
-#여섯 번째 Conv층 쌓기
-#Input: 8 * 8 * 128
-#Filters: (3 * 3 * 128) * 128 -> 128 filters
-#Output: 8 * 8 * 128
-
-model.add(Conv2D(filters=128, kernel_size=3, padding='same', activation='relu'))
-
-#일곱 번째 Conv층 쌓기
-#Input: 8 * 8 * 128
-#Filters: (3 * 3 * 128) * 128 -> 128 filters
-#Output: 8 * 8 * 128
-#MaxPool: 4 * 4 * 128
-
-model.add(Conv2D(filters=128, kernel_size=3, padding='same', activation='relu'))
+# 일곱 번째 Conv층
+model.add(Conv2D(128, (3, 3), padding='same'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 model.add(MaxPool2D(pool_size=2))
 
-#Dropout 층 쌓기
-#훈련 시 Layer의 30%의 뉴런을 무작위로 비활성화
+# Dropout & Output
 model.add(Dropout(0.3))
-
-
-#Flatten
-#Input: 4 * 4 * 128
-#Output: 2028
-model.add(Flatten())
-
-
-#Two Fully-Connected Layer
-#Input: 2028
-#Intermediate Output: 500
-#Dropout
-#30%의 뉴런을 무작위로 비활성화
-#Final Output: 10
-model.add(Dense(500, activation='relu'))
-model.add(Dropout(0.3))
+model.add(GlobalAveragePooling2D()) # Flatten 대신 사용
 model.add(Dense(10, activation='softmax'))
 
-#모델 요약
+# 모델 요약
 model.summary()
 
-optimizer = SGD(learning_rate=0.01)
+# 7. 모델 컴파일
+optimizer = SGD(learning_rate=0.01, momentum=0.9)
+model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
-#모델 컴파일하기
-model.compile(optimizer=optimizer, loss='categorical_crossentropy',  metrics=['accuracy'])
-
-
-#모델 학습하기
-#callback의 진행상황에 대한 상세 출력 활성화; 각 에포크마다 결과가 출력됨
-#전체 훈련 데이터에 대해서 10번 에포크 반복
-
+# 8. 모델 학습하기 (여기로 fit 함수 이동)
 lr_scheduler = LearningRateScheduler(scheduler, verbose=1)
 checkpointer = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=1, save_best_only=True)
-hist=  model.fit(x_train, y_train, batch_size=32, epochs=80, validation_data=(x_valid, y_valid), callbacks=[lr_scheduler, checkpointer], verbose=2, shuffle=True)
 
+# datagen.flow를 사용하여 학습
+history = model.fit(
+    datagen.flow(x_train_main, y_train_main, batch_size=32),
+    epochs=80,
+    validation_data=(x_valid, y_valid),
+    callbacks=[lr_scheduler, checkpointer],
+    verbose=2,
+    steps_per_epoch=len(x_train_main) // 32 # 전체 데이터를 배치 사이즈로 나눈 만큼 반복
+)
 
-#val_acc가 가장 좋았던 가중치 사용하기
+# 9. 모델 평가 및 시각화 (기존 코드 유지)
 model.load_weights('model.weights.best.hdf5')
-
-#모델 평가하기
 score = model.evaluate(x_test, y_test, verbose=0)
 print('\n', 'Test Accuracy: ', score[1])
 
-
-# 모델 예측
 y_pred = model.predict(x_test)
-
-# 예측 레이블을 원-핫 인코딩에서 정수 레이블로 변환
 y_pred_classes = np.argmax(y_pred, axis=1)
 y_true = np.argmax(y_test, axis=1)
 
-# 레이블에 해당하는 이름
 class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
-
-# 혼동 행렬 
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 cm = confusion_matrix(y_true, y_pred_classes)
 
-# 혼동 행렬 시각화
 plt.figure(figsize=(10, 8))
 sns.heatmap(cm, annot=True, fmt='d', xticklabels=class_names, yticklabels=class_names)
 plt.ylabel('Actual')
 plt.xlabel('Predicted')
 plt.show()
 
-# 잘못 분류된 이미지 식별
 misclassified_idx = np.where(y_pred_classes != y_true)[0]
 
-
-
-
-# 잘못 분류된 이미지 중 일부 시각화
 plt.figure(figsize=(15, 4))
-for i, idx in enumerate(misclassified_idx[:10]): # 처음 10개만 표시
+for i, idx in enumerate(misclassified_idx[:10]):
     plt.subplot(2, 5, i + 1)
     plt.imshow((x_test[idx] * 255).astype('uint8'))
     true_label = class_names[y_true[idx]]
