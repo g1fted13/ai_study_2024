@@ -7,7 +7,7 @@ from keras.datasets import cifar10
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Activation, BatchNormalization, Conv2D, GlobalAveragePooling2D, MaxPool2D, Flatten, Dense, Dropout
-from keras.optimizers import SGD
+from keras.optimizers import AdamW
 from keras.callbacks import LearningRateScheduler, ModelCheckpoint
 from sklearn.metrics import confusion_matrix
 
@@ -32,11 +32,11 @@ y_test = keras.utils.to_categorical(y_test, num_classes)
 
 # 5. ImageDataGenerator 정의 (실시간 증강 설정)
 datagen = ImageDataGenerator(
-    rotation_range=15,      # 이미지를 15도 내외로 회전
+    rotation_range=60,      # 이미지를 45도 내외로 회전
     width_shift_range=0.1,  # 좌우로 10% 이동
     height_shift_range=0.1, # 상하로 10% 이동
     horizontal_flip=True,   # 좌우 반전
-    zoom_range=0.1          # 10% 확대/축소
+    zoom_range=0.05
 )
 
 # 6. CNN 모델링 (모델을 먼저 정의해야 학습을 시킬 수 있습니다)
@@ -45,9 +45,11 @@ datagen = ImageDataGenerator(
 def scheduler(epoch, lr):
     if epoch < 10:
         return 0.01
-    else:
+    elif epoch < 40:
         return 0.001
-
+    else:
+        return 0.0001
+    
 model = Sequential()
 
 # 첫 번째 Conv층
@@ -88,8 +90,7 @@ model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPool2D(pool_size=2))
 
-# Dropout & Output
-model.add(Dropout(0.3))
+# Output
 model.add(GlobalAveragePooling2D()) # Flatten 대신 사용
 model.add(Dense(10, activation='softmax'))
 
@@ -97,7 +98,7 @@ model.add(Dense(10, activation='softmax'))
 model.summary()
 
 # 7. 모델 컴파일
-optimizer = SGD(learning_rate=0.01, momentum=0.9)
+optimizer = AdamW(learning_rate=0.001, weight_decay=0.004)
 model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
 # 8. 모델 학습하기 (여기로 fit 함수 이동)
@@ -107,7 +108,7 @@ checkpointer = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=1, sa
 # datagen.flow를 사용하여 학습
 history = model.fit(
     datagen.flow(x_train_main, y_train_main, batch_size=32),
-    epochs=80,
+    epochs=150,
     validation_data=(x_valid, y_valid),
     callbacks=[lr_scheduler, checkpointer],
     verbose=2,
@@ -177,4 +178,10 @@ Test Accuracy: 0.8033000230789185
 
 2024-01-29 18:53 (데이터 증강 + 3번째 모델 + 에포크 80 + optimizer SGD learning_rate 0.01 -> 0.001)
 Test Accuracy: 0.8113999962806702
+
+2025-12-29 (전역 후 처음!) (SGD에 momentum 추가한 게 제일 효과적이었음)
+Test Accuracy:  0.8805000185966492
+
+2025-12-29 (AdamW, Augmentation 증강, Epoch 150)
+Test Accuracy:  0.8379999995231628
 '''
