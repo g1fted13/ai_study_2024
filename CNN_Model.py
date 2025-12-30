@@ -8,7 +8,8 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Activation, BatchNormalization, Conv2D, GlobalAveragePooling2D, MaxPool2D, Flatten, Dense, Dropout
 from keras.optimizers import AdamW
-from keras.callbacks import LearningRateScheduler, ModelCheckpoint
+# LearningRateScheduler 대신 ReduceLROnPlateau, EarlyStopping 추가
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 from sklearn.metrics import confusion_matrix
 
 # os.system('pip install tensorflow') # 필요한 경우 주석 해제
@@ -25,35 +26,25 @@ num_classes = len(np.unique(y_train))
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
-# 4. 훈련/검증 데이터 분리 (모델 학습 전에 미리 나누어야 함)
-# 데이터 증강을 위해 원본 x_train을 x_train_main과 x_valid로 나눕니다.
+# 4. 훈련/검증 데이터 분리
 (x_train_main, x_valid) = x_train[5000:], x_train[:5000]
 (y_train_main, y_valid) = y_train[5000:], y_train[:5000]
 
-# 5. ImageDataGenerator 정의 (실시간 증강 설정)
+# 5. ImageDataGenerator 정의 (수정됨: 회전 각도 60 -> 25)
 datagen = ImageDataGenerator(
-    rotation_range=60,      # 이미지를 45도 내외로 회전
+    rotation_range=25,      # [수정] 과도한 회전은 오히려 독이 되므로 25도로 완화
     width_shift_range=0.1,  # 좌우로 10% 이동
     height_shift_range=0.1, # 상하로 10% 이동
     horizontal_flip=True,   # 좌우 반전
     zoom_range=0.05
 )
 
-# 6. CNN 모델링 (모델을 먼저 정의해야 학습을 시킬 수 있습니다)
+# 6. CNN 모델링
 
-# 학습률 조정 함수 정의
-def scheduler(epoch, lr):
-    if epoch < 10:
-        return 0.01
-    elif epoch < 40:
-        return 0.001
-    else:
-        return 0.0001
-    
 model = Sequential()
 
 # 첫 번째 Conv층
-model.add(Conv2D(32, (3, 3), padding='same', input_shape=(32, 32, 3))) # 첫 층에는 input_shape 명시 필요
+model.add(Conv2D(32, (3, 3), padding='same', input_shape=(32, 32, 3)))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 
@@ -90,8 +81,9 @@ model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPool2D(pool_size=2))
 
-# Output
-model.add(GlobalAveragePooling2D()) # Flatten 대신 사용
+# Output (수정됨: Dense 층 추가)
+model.add(GlobalAveragePooling2D())
+model.add(Dense(256, activation='relu')) # [수정] 모델의 표현력을 높이기 위해 은닉층 추가
 model.add(Dense(10, activation='softmax'))
 
 # 모델 요약
@@ -101,22 +93,41 @@ model.summary()
 optimizer = AdamW(learning_rate=0.001, weight_decay=0.004)
 model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
-# 8. 모델 학습하기 (여기로 fit 함수 이동)
-lr_scheduler = LearningRateScheduler(scheduler, verbose=1)
+# 8. 모델 학습하기 (수정됨: Callbacks 변경)
+
+# [수정] ReduceLROnPlateau: val_loss가 10번 동안 안 줄어들면 학습률 절반으로 깎음
+reduce_lr = ReduceLROnPlateau(
+    monitor='val_loss', 
+    factor=0.5, 
+    patience=10, 
+    min_lr=1e-6, 
+    verbose=1
+)
+
+# [수정] EarlyStopping: 15번 동안 안 줄어들면 학습 조기 종료 + 최고 성능 가중치 복구
+early_stopping = EarlyStopping(
+    monitor='val_loss', 
+    patience=15, 
+    verbose=1, 
+    restore_best_weights=True 
+)
+
 checkpointer = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=1, save_best_only=True)
 
 # datagen.flow를 사용하여 학습
 history = model.fit(
     datagen.flow(x_train_main, y_train_main, batch_size=32),
-    epochs=150,
+    epochs=180, # 넉넉하게 설정 (EarlyStopping이 있으므로 괜찮음)
     validation_data=(x_valid, y_valid),
-    callbacks=[lr_scheduler, checkpointer],
+    callbacks=[reduce_lr, checkpointer, early_stopping], # 콜백 리스트 수정됨
     verbose=2,
-    steps_per_epoch=len(x_train_main) // 32 # 전체 데이터를 배치 사이즈로 나눈 만큼 반복
+    steps_per_epoch=len(x_train_main) // 32
 )
 
-# 9. 모델 평가 및 시각화 (기존 코드 유지)
-model.load_weights('model.weights.best.hdf5')
+# 9. 모델 평가 및 시각화
+# EarlyStopping의 restore_best_weights=True 덕분에 학습 종료 후 model은 이미 최적의 가중치를 가지고 있음
+# 하지만 안전을 위해 저장된 파일에서 다시 로드
+model.load_weights('model.weights.best.hdf5') 
 score = model.evaluate(x_test, y_test, verbose=0)
 print('\n', 'Test Accuracy: ', score[1])
 
@@ -184,4 +195,7 @@ Test Accuracy:  0.8805000185966492
 
 2025-12-29 (AdamW, Augmentation 증강, Epoch 150)
 Test Accuracy:  0.8379999995231628
+
+2025-12-29 (AdamW, 회전각 다시 감소, Dense층 추가, Epoch 86에서 early stopping)
+Test Accuracy:  0.8931000232696533
 '''
